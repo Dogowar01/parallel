@@ -45,10 +45,10 @@ body {
 #bg {
   position: fixed; inset: 0; z-index: 0;
   background: url('bg.png') center 40% / cover no-repeat;
-  filter: brightness(0.22) saturate(0.7);
+  filter: brightness(0.48) saturate(0.85);
   transition: filter 0.5s;
 }
-body.light-mode #bg { filter: brightness(0.55) saturate(0.6); }
+body.light-mode #bg { filter: brightness(0.72) saturate(0.75); }
 
 /* ── Views ─────────────────────────────────────────── */
 .view {
@@ -71,9 +71,9 @@ body.light-mode #bg { filter: brightness(0.55) saturate(0.6); }
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px 10px;
   border-bottom: 1px solid var(--border);
-  background: rgba(10,6,20,0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(10,6,20,0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 .topbar-title {
   flex: 1; font-family: var(--serif); font-size: 18px;
@@ -100,7 +100,7 @@ body.light-mode #bg { filter: brightness(0.55) saturate(0.6); }
 .mode-tabs {
   flex-shrink: 0; display: flex;
   border-bottom: 1px solid var(--border);
-  background: rgba(10,6,20,0.5);
+  background: rgba(10,6,20,0.3);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -121,12 +121,12 @@ body.light-mode #bg { filter: brightness(0.55) saturate(0.6); }
 #branch-list { padding: 14px 16px 100px; display: flex; flex-direction: column; gap: 10px; }
 
 .branch-card {
-  background: var(--bg2); border: 1px solid var(--border);
+  background: rgba(12,7,24,0.55); border: 1px solid var(--border);
   border-radius: var(--r); padding: 16px 16px 16px 20px;
   cursor: pointer; position: relative; overflow: hidden;
   transition: border-color 0.15s, transform 0.1s;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 .branch-card::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0;
@@ -201,8 +201,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--a); }
 ══════════════════════════════════════════════════════ */
 .path-switcher {
   flex-shrink: 0; display: flex;
-  background: rgba(10,6,20,0.6);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: rgba(10,6,20,0.35);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   position: relative;
 }
@@ -244,8 +244,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--a); }
   border-bottom: 1px solid var(--border);
   font-family: var(--serif); font-style: italic;
   font-size: 13px; color: var(--dim); line-height: 1.6;
-  background: rgba(10,6,20,0.4);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  background: rgba(10,6,20,0.22);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 
 .panel-container {
