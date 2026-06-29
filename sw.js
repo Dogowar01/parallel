@@ -1,11 +1,12 @@
-const CACHE = 'parallel-v1';
+const CACHE = 'parallel-v3';
 const ASSETS = [
   '/parallel/',
   '/parallel/index.html',
   '/parallel/sw.js',
   '/parallel/manifest.webmanifest',
   '/parallel/icon-192.png',
-  '/parallel/icon-512.png'
+  '/parallel/icon-512.png',
+  '/parallel/bg.png'
 ];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))).catch(() => {}));
