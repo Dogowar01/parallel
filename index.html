@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Parallel">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Parallel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+
+/* ── Reset ────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  height: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ── Theme variables (set via JS) ─────────────────── */
+body {
+  --bg:      #0f0a1a;
+  --bg2:     #1a1228;
+  --bg3:     #231840;
+  --border:  rgba(255,255,255,0.08);
+  --text:    #e2d4f0;
+  --dim:     #7c6b9e;
+  --head:    #f5eeff;
+  --a:       #a855f7;
+  --a-soft:  rgba(168,85,247,0.12);
+  --b:       #e879a0;
+  --b-soft:  rgba(232,121,160,0.12);
+  --serif:   'Fraunces', Georgia, serif;
+  --r:       10px;
+  --safe-t:  env(safe-area-inset-top, 0px);
+  --safe-b:  env(safe-area-inset-bottom, 0px);
+}
+
+/* ── App shell ────────────────────────────────────── */
+#app {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  color: var(--text);
+  display: flex; flex-direction: column;
+  padding-top: var(--safe-t);
+  padding-bottom: var(--safe-b);
+  overflow: hidden;
+}
+
+/* ── Views ────────────────────────────────────────── */
+.view {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  padding-top: var(--safe-t);
+  padding-bottom: var(--safe-b);
+  background: var(--bg);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
+  will-change: transform;
+}
+.view.hidden       { transform: translateX(100%); pointer-events: none; opacity: 0; }
+.view.hidden.back  { transform: translateX(-30%); }
+.view.active       { transform: translateX(0); opacity: 1; }
+
+/* ── Top bar ──────────────────────────────────────── */
+.topbar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.topbar-title {
+  flex: 1;
+  font-family: var(--serif);
+  font-size: 20px; font-weight: 400;
+  color: var(--head); letter-spacing: 0.01em;
+}
+.icon-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none;
+  color: var(--dim); font-size: 18px;
+  cursor: pointer; border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: var(--bg3); color: var(--text); }
+.icon-btn.accent { color: var(--a); }
+
+/* ── Wordmark ─────────────────────────────────────── */
+#wordmark {
+  font-family: var(--serif);
+  font-size: 26px; font-weight: 300;
+  color: var(--head); letter-spacing: 0.04em;
+}
+#wordmark span { color: var(--a); }
+
+/* ── Mode tabs ────────────────────────────────────── */
+.mode-tabs {
+  display: flex;
+  padding: 12px 18px 0;
+  gap: 0;
+  flex-shrink: 0;
+}
+.mode-tab {
+  flex: 1; padding: 8px 12px;
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--dim); font-size: 12px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; transition: color 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+.mode-tab.on { color: var(--a); border-bottom-color: var(--a); }
+
+/* ── Scrollable content ───────────────────────────── */
+.scroll {
+  flex: 1; overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ── Branch list ──────────────────────────────────── */
+#branch-list {
+  padding: 16px 18px 80px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.empty-state {
+  text-align: center; padding: 60px 24px;
+  color: var(--dim); font-size: 14px; line-height: 1.8;
+}
+.empty-state p:first-child { font-family: var(--serif); font-size: 18px; color: var(--text); margin-bottom: 8px; }
+
+/* ── Branch card (home list) ──────────────────────── */
+.branch-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative; overflow: hidden;
+}
+.branch-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--a);
+  border-radius: var(--r) 0 0 var(--r);
+}
+.branch-card:hover { border-color: rgba(255,255,255,0.15); background: var(--bg3); }
+.branch-card.sample::before { background: var(--dim); }
+.branch-card.fiction::before { background: var(--b); }
+.branch-card-mode {
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--dim); margin-bottom: 6px; display: flex; gap: 8px; align-items: center;
+}
+.branch-card-mode .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--a); display: inline-block; }
+.branch-card.fiction .branch-card-mode .dot { background: var(--b); }
+.branch-card.sample .branch-card-mode .dot { background: var(--dim); }
+.branch-card-title {
+  font-family: var(--serif); font-size: 17px; color: var(--head);
+  margin-bottom: 6px; line-height: 1.3;
+}
+.branch-card-moment {
+  font-size: 13px; color: var(--dim); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.branch-card-meta {
+  display: flex; gap: 12px; margin-top: 10px;
+  font-size: 11px; color: var(--dim);
+}
+.branch-card-meta span { display: flex; align-items: center; gap: 4px; }
+
+/* ── FAB ──────────────────────────────────────────── */
+#fab {
+  position: fixed; right: 20px; bottom: calc(24px + var(--safe-b));
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--a); border: none; color: #fff;
+  font-size: 28px; cursor: pointer; z-index: 50;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s, filter 0.15s;
+}
+#fab:hover { filter: brightness(1.15); transform: scale(1.05); }
+
+/* ── Create view ──────────────────────────────────── */
+#v-create .scroll { padding: 20px 18px 60px; }
+.field { margin-bottom: 18px; }
+.field label {
+  display: block; font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--dim); margin-bottom: 6px;
+}
+input[type=text], select, textarea {
+  width: 100%;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); color: var(--text);
+  font-family: var(--serif); font-size: 16px;
+  padding: 12px 14px; outline: none;
+  -webkit-appearance: none; transition: border-color 0.15s;
+}
+input[type=text], select { font-family: inherit; font-size: 15px; }
+textarea { resize: vertical; min-height: 90px; line-height: 1.7; }
+input:focus, select:focus, textarea:focus { border-color: var(--a); }
+select option { background: var(--bg2); }
+.field-hint { font-size: 12px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+.mode-select {
+  display: flex; gap: 8px; margin-bottom: 0;
+}
+.mode-opt {
+  flex: 1; padding: 10px 8px;
+  border: 1px solid var(--border); border-radius: var(--r);
+  background: var(--bg2); color: var(--dim);
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer; text-align: center; transition: all 0.15s;
+}
+.mode-opt.on { border-color: var(--a); color: var(--a); background: var(--a-soft); }
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px;
+  border-radius: var(--r); border: none;
+  font-family: var(--serif); font-size: 16px; font-weight: 400;
+  cursor: pointer; transition: filter 0.15s, transform 0.1s;
+}
+.btn-primary { background: var(--a); color: #fff; }
+.btn-primary:hover { filter: brightness(1.12); }
+.btn-ghost { background: var(--bg2); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 14px; }
+.btn-ghost:hover { background: var(--bg3); }
+.btn-danger-ghost { background: none; border: 1px solid rgba(232,121,160,0.3); color: var(--b); font-family: inherit; font-size: 13px; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+
+/* ── Branch view ──────────────────────────────────── */
+#v-branch { background: var(--bg); }
+
+.path-indicator {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.path-pip {
+  height: 4px; border-radius: 2px;
+  transition: width 0.3s, background 0.3s;
+}
+.path-pip.a { background: var(--a); width: 28px; }
+.path-pip.b { background: var(--b); width: 28px; }
+.path-pip.dim { background: var(--border); width: 16px; }
+.path-label {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  transition: color 0.3s;
+}
+
+/* ── Path swipe container ─────────────────────────── */
+.path-swipe {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.path-swipe::-webkit-scrollbar { display: none; }
+
+.path-panel {
+  flex: none; width: 100%;
+  scroll-snap-align: start;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+}
+.path-panel::before {
+  content: '';
+  position: fixed; /* covers the whole panel bg */
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.4s;
+}
+.path-panel.panel-a { background: linear-gradient(160deg, var(--a-soft) 0%, var(--bg) 40%); }
+.path-panel.panel-b { background: linear-gradient(160deg, var(--b-soft) 0%, var(--bg) 40%); }
+
+.path-header {
+  flex-shrink: 0;
+  padding: 20px 20px 4px;
+  position: relative; z-index: 1;
+}
+.path-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 20px;
+  margin-bottom: 10px;
+}
+.path-tag.a { background: var(--a-soft); color: var(--a); border: 1px solid rgba(168,85,247,0.2); }
+.path-tag.b { background: var(--b-soft); color: var(--b); border: 1px solid rgba(232,121,160,0.2); }
+.path-branch-title {
+  font-family: var(--serif); font-style: italic;
+  font-size: 15px; color: var(--dim); line-height: 1.5;
+}
+
+.path-entries {
+  flex: 1; padding: 16px 20px;
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+.entry {
+  position: relative;
+}
+.entry-date {
+  font-size: 10px; letter-spacing: 0.06em;
+  color: var(--dim); margin-bottom: 6px;
+}
+.entry-text {
+  font-family: var(--serif); font-size: 16px;
+  line-height: 1.85; color: var(--text);
+}
+.entry-text.a { color: var(--head); }
+.entry-text.b { color: var(--head); }
+
+.entry-divider {
+  height: 1px; background: var(--border); margin: 4px 0;
+}
+
+.path-empty {
+  font-family: var(--serif); font-style: italic;
+  font-size: 15px; color: var(--dim); line-height: 1.8;
+  padding: 8px 0;
+}
+
+.path-add-btn {
+  flex-shrink: 0;
+  margin: 8px 20px 20px;
+  padding: 12px 18px;
+  border-radius: var(--r);
+  border: 1px dashed;
+  background: none; cursor: pointer;
+  font-family: var(--serif); font-size: 15px;
+  transition: background 0.15s;
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 8px;
+}
+.path-add-btn.a { border-color: rgba(168,85,247,0.3); color: var(--a); }
+.path-add-btn.b { border-color: rgba(232,121,160,0.3); color: var(--b); }
+.path-add-btn:hover { background: var(--bg2); }
+
+/* ── Swipe hint ───────────────────────────────────── */
+.swipe-hint {
+  position: absolute; right: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px; color: var(--border);
+  pointer-events: none; z-index: 2;
+  animation: pulse-hint 2s ease-in-out infinite;
+}
+@keyframes pulse-hint {
+  0%, 100% { opacity: 0.4; transform: translateY(-50%) translateX(0); }
+  50%       { opacity: 0.9; transform: translateY(-50%) translateX(-4px); }
+}
+
+/* ── Write overlay ────────────────────────────────── */
+#write-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  padding-top: var(--safe-t);
+  padding-bottom: var(--safe-b);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+#write-overlay.on { transform: translateY(0); }
+#write-overlay .topbar { border-bottom-color: var(--border); }
+#write-textarea {
+  flex: 1; width: 100%;
+  background: none; border: none;
+  color: var(--text); font-family: var(--serif);
+  font-size: 17px; line-height: 1.9;
+  padding: 20px 22px;
+  outline: none; resize: none;
+}
+#write-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+#write-path-label {
+  font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; padding-top: 14px;
+  flex: 1;
+}
+#write-path-label.a { color: var(--a); }
+#write-path-label.b { color: var(--b); }
+
+/* ── Share card overlay ───────────────────────────── */
+#share-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.85);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(8px);
+}
+#share-overlay.on { display: flex; }
+#share-canvas-wrap {
+  width: min(340px, 100%);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  margin-bottom: 20px;
+}
+#share-canvas-wrap canvas { display: block; width: 100%; height: auto; }
+#share-btns { display: flex; gap: 10px; }
+
+/* ── Settings view ────────────────────────────────── */
+#v-settings .scroll { padding: 20px 18px 60px; }
+.settings-section { margin-bottom: 28px; }
+.settings-label {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dim); margin-bottom: 12px;
+}
+.theme-toggle {
+  display: flex; gap: 8px;
+}
+.theme-opt {
+  flex: 1; padding: 12px 8px; border-radius: var(--r);
+  border: 1px solid var(--border); background: var(--bg2);
+  color: var(--dim); font-size: 13px;
+  cursor: pointer; text-align: center; transition: all 0.15s;
+}
+.theme-opt.on { border-color: var(--a); color: var(--a); background: var(--a-soft); }
+.accent-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+}
+.accent-opt {
+  aspect-ratio: 1; border-radius: 10px;
+  border: 2px solid transparent; cursor: pointer;
+  position: relative; overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.accent-opt.on { border-color: var(--head); transform: scale(0.92); }
+.accent-opt span {
+  position: absolute; bottom: 6px; left: 0; right: 0;
+  text-align: center; font-size: 10px;
+  color: rgba(255,255,255,0.7); letter-spacing: 0.05em;
+}
+.danger-zone { margin-top: 40px; }
+
+/* ── Toast ────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: calc(24px + var(--safe-b)); left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 8px 18px;
+  font-size: 13px; color: var(--text);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s; z-index: 300;
+  white-space: nowrap;
+}
+#toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Divider ──────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+@media (min-width: 480px) {
+  #fab { right: 28px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     HOME VIEW
+══════════════════════════════════════════════════ -->
+<div id="v-home" class="view active">
+  <div class="topbar">
+    <span id="wordmark">Para<span>ll</span>el</span>
+    <button class="icon-btn" onclick="goSettings()" title="Settings">⚙</button>
+  </div>
+  <div class="mode-tabs">
+    <button class="mode-tab on" data-mode="real" onclick="setMode('real',this)">Real</button>
+    <button class="mode-tab" data-mode="fiction" onclick="setMode('fiction',this)">Fiction</button>
+  </div>
+  <div class="scroll" id="branch-list-wrap">
+    <div id="branch-list"></div>
+  </div>
+  <button id="fab" onclick="goCreate()" title="New branch point">+</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     CREATE VIEW
+══════════════════════════════════════════════════ -->
+<div id="v-create" class="view hidden">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goBack('v-create')" title="Back">←</button>
+    <span class="topbar-title">New Branch Point</span>
+  </div>
+  <div class="scroll" style="padding:20px 18px 80px">
+    <div class="field">
+      <label>Mode</label>
+      <div class="mode-select">
+        <div class="mode-opt on" data-m="real" onclick="selectCreateMode('real')">Real</div>
+        <div class="mode-opt" data-m="fiction" onclick="selectCreateMode('fiction')">Fiction</div>
+      </div>
+      <p class="field-hint" id="mode-hint">A decision from your own life — a moment of genuine choice.</p>
+    </div>
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="create-title" placeholder="The job I almost took">
+    </div>
+    <div class="field">
+      <label>The decision moment</label>
+      <textarea id="create-moment" placeholder="Describe the moment of choice — when did it happen, what was at stake? One or two sentences is enough."></textarea>
+      <p class="field-hint">This anchors both paths. It shows at the top of every entry.</p>
+    </div>
+    <div style="margin-top:8px">
+      <button class="btn btn-primary" onclick="createBranch()">Create Branch Point</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     BRANCH VIEW
+══════════════════════════════════════════════════ -->
+<div id="v-branch" class="view hidden">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goBack('v-branch')" title="Back">←</button>
+    <span class="topbar-title" id="branch-view-title"></span>
+    <button class="icon-btn" onclick="openShare()" title="Share card">↗</button>
+    <button class="icon-btn" onclick="deleteBranch()" title="Delete" style="color:var(--b)">⊗</button>
+  </div>
+  <div class="path-indicator">
+    <span class="path-label" id="pi-label-a" style="color:var(--a)">This Path</span>
+    <div class="path-pip a" id="pi-a"></div>
+    <div class="path-pip b" id="pi-b"></div>
+    <span class="path-label" id="pi-label-b" style="color:var(--dim)">The Other</span>
+  </div>
+  <div class="path-swipe" id="path-swipe">
+    <!-- Panel A: This Path -->
+    <div class="path-panel panel-a" id="panel-a">
+      <div class="path-header">
+        <div class="path-tag a">✦ This Path</div>
+        <div class="path-branch-title" id="panel-a-moment"></div>
+      </div>
+      <div class="path-entries" id="entries-a"></div>
+      <button class="path-add-btn a" onclick="openWrite('a')">
+        <span style="font-size:18px">+</span> Add an entry
+      </button>
+      <div class="swipe-hint" id="swipe-hint-a">›</div>
+    </div>
+    <!-- Panel B: The Other -->
+    <div class="path-panel panel-b" id="panel-b">
+      <div class="path-header">
+        <div class="path-tag b">◇ The Other</div>
+        <div class="path-branch-title" id="panel-b-moment"></div>
+      </div>
+      <div class="path-entries" id="entries-b"></div>
+      <button class="path-add-btn b" onclick="openWrite('b')">
+        <span style="font-size:18px">+</span> Add an entry
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SETTINGS VIEW
+══════════════════════════════════════════════════ -->
+<div id="v-settings" class="view hidden">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goBack('v-settings')" title="Back">←</button>
+    <span class="topbar-title">Settings</span>
+  </div>
+  <div class="scroll" style="padding:20px 18px 60px">
+    <div class="settings-section">
+      <div class="settings-label">Appearance</div>
+      <div class="theme-toggle">
+        <button class="theme-opt on" data-t="dark"  onclick="setTheme('dark',this)">Dark</button>
+        <button class="theme-opt"    data-t="light" onclick="setTheme('light',this)">Light</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Colour</div>
+      <div class="accent-grid" id="accent-grid"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section danger-zone">
+      <div class="settings-label">Data</div>
+      <p style="font-size:13px;color:var(--dim);margin-bottom:14px;line-height:1.6">All branches and entries are stored locally on this device. Clearing removes everything permanently.</p>
+      <button class="btn-danger-ghost" onclick="confirmClear()">Clear all data</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     WRITE OVERLAY
+══════════════════════════════════════════════════ -->
+<div id="write-overlay">
+  <div class="topbar">
+    <button class="icon-btn" onclick="closeWrite()" title="Cancel">✕</button>
+    <span id="write-path-label" class="a">This Path</span>
+    <button class="icon-btn accent" onclick="saveEntry()" title="Save">✓</button>
+  </div>
+  <textarea id="write-textarea" placeholder="Write what happened on this path…"></textarea>
+  <div id="write-footer">
+    <span style="font-size:11px;color:var(--dim);padding-top:4px" id="write-hint">What does this path look like, feel like?</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SHARE OVERLAY
+══════════════════════════════════════════════════ -->
+<div id="share-overlay">
+  <div id="share-canvas-wrap"><canvas id="share-canvas"></canvas></div>
+  <div id="share-btns">
+    <button class="btn btn-primary" style="min-width:140px;padding:12px 20px;border-radius:8px;font-family:inherit;font-size:14px" onclick="downloadCard()">Download</button>
+    <button class="btn btn-ghost" style="min-width:100px;padding:12px 20px;border-radius:8px" onclick="closeShare()">Close</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+// THEME CONFIG
+// ══════════════════════════════════════════════════
+const ACCENTS = {
+  plum:  { label:'Plum',   a:'#a855f7', b:'#e879a0', as:'rgba(168,85,247,0.12)',  bs:'rgba(232,121,160,0.12)',  dark:{ bg:'#0f0a1a', bg2:'#1a1228', bg3:'#231840' }, light:{ bg:'#faf7ff', bg2:'#ffffff', bg3:'#f0e8ff' } },
+  tide:  { label:'Tide',   a:'#22d3ee', b:'#34d399', as:'rgba(34,211,238,0.1)',   bs:'rgba(52,211,153,0.1)',    dark:{ bg:'#0a1820', bg2:'#0f2232', bg3:'#163045' }, light:{ bg:'#f0fbff', bg2:'#ffffff', bg3:'#e0f7fc' } },
+  ember: { label:'Ember',  a:'#fb923c', b:'#f87171', as:'rgba(251,146,60,0.1)',   bs:'rgba(248,113,113,0.1)',   dark:{ bg:'#180a06', bg2:'#261310', bg3:'#351c18' }, light:{ bg:'#fffaf7', bg2:'#ffffff', bg3:'#fff0e8' } },
+  stone: { label:'Stone',  a:'#94a3b8', b:'#7c9aad', as:'rgba(148,163,184,0.1)', bs:'rgba(124,154,173,0.1)',   dark:{ bg:'#0d1117', bg2:'#161b22', bg3:'#1f2937' }, light:{ bg:'#f6f8fa', bg2:'#ffffff', bg3:'#eef2f7' } },
+};
+
+const ACCENT_CARD_GRADS = {
+  plum:  ['#6d28d9','#0f0a1a'],
+  tide:  ['#0891b2','#0a1820'],
+  ember: ['#c2410c','#180a06'],
+  stone: ['#475569','#0d1117'],
+};
+
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let S = { branches: [], settings: { theme: 'dark', accent: 'plum' } };
+let currentMode = 'real';
+let currentBranchId = null;
+let writeTarget = null; // 'a' or 'b'
+let currentView = 'v-home';
+let shareCanvas = null;
+
+const SAMPLE = {
+  id: 'sample', isSample: true, mode: 'real',
+  title: 'The road I almost took',
+  moment: 'A job offer came in. A different city, a different life. I had 48 hours to decide.',
+  thisPath: [{ id:'s1', text: 'I stayed. The familiar weight of the city settled back around me like a coat I\'d never taken off. Within a month I\'d forgotten the exact shape of what I\'d almost chosen.', createdAt: Date.now() - 86400000 * 2 }],
+  theOther: [{ id:'s2', text: 'I took it. The apartment was smaller than I expected. The city moved faster. I learned to read a different skyline, and in that I found a version of myself I hadn\'t known was waiting.', createdAt: Date.now() - 86400000 * 2 }],
+  createdAt: Date.now() - 86400000 * 2
+};
+
+function load() {
+  try {
+    const d = localStorage.getItem('parallel-v1');
+    if (d) S = { ...S, ...JSON.parse(d) };
+  } catch(e) {}
+}
+function save() {
+  try { localStorage.setItem('parallel-v1', JSON.stringify(S)); } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════════════
+function applyTheme() {
+  const { theme, accent } = S.settings;
+  const ac = ACCENTS[accent] || ACCENTS.plum;
+  const bg = theme === 'dark' ? ac.dark : ac.light;
+  const r = document.documentElement.style;
+  const b = document.body.style;
+
+  b.setProperty('--bg',    bg.bg);
+  b.setProperty('--bg2',   bg.bg2);
+  b.setProperty('--bg3',   bg.bg3);
+  b.setProperty('--a',     ac.a);
+  b.setProperty('--b',     ac.b);
+  b.setProperty('--a-soft', ac.as);
+  b.setProperty('--b-soft', ac.bs);
+
+  if (theme === 'dark') {
+    b.setProperty('--border', 'rgba(255,255,255,0.08)');
+    b.setProperty('--text',   '#e2d4f0');
+    b.setProperty('--dim',    '#7c6b9e');
+    b.setProperty('--head',   '#f5eeff');
+  } else {
+    b.setProperty('--border', 'rgba(0,0,0,0.1)');
+    b.setProperty('--text',   '#2d1f3d');
+    b.setProperty('--dim',    '#9b8ab0');
+    b.setProperty('--head',   '#1a0d2e');
+  }
+
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg.bg);
+  renderAccentGrid();
+}
+
+function setTheme(t, btn) {
+  S.settings.theme = t;
+  save(); applyTheme();
+  document.querySelectorAll('.theme-opt').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+}
+
+function renderAccentGrid() {
+  const grid = document.getElementById('accent-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  Object.entries(ACCENTS).forEach(([key, ac]) => {
+    const el = document.createElement('div');
+    el.className = 'accent-opt' + (S.settings.accent === key ? ' on' : '');
+    el.style.background = `linear-gradient(135deg, ${ac.a}, ${ac.b})`;
+    el.innerHTML = `<span>${ac.label}</span>`;
+    el.onclick = () => {
+      S.settings.accent = key; save(); applyTheme();
+      document.querySelectorAll('.accent-opt').forEach(e => e.classList.toggle('on', e === el));
+    };
+    grid.appendChild(el);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════
+function showView(id, isBack = false) {
+  const prev = document.getElementById(currentView);
+  const next = document.getElementById(id);
+  if (prev === next) return;
+  if (isBack) {
+    prev.classList.remove('active'); prev.classList.add('hidden');
+    next.classList.remove('hidden', 'back'); next.classList.add('active');
+  } else {
+    prev.classList.remove('active'); prev.classList.add('hidden', 'back');
+    next.classList.remove('hidden', 'back'); next.classList.add('active');
+  }
+  currentView = id;
+}
+
+function goBack(fromId) {
+  if (fromId === 'v-create' || fromId === 'v-settings') showView('v-home', true);
+  else if (fromId === 'v-branch') showView('v-home', true);
+}
+
+function goCreate() {
+  document.getElementById('create-title').value = '';
+  document.getElementById('create-moment').value = '';
+  selectCreateMode(currentMode);
+  showView('v-create');
+}
+
+function goSettings() {
+  const { theme } = S.settings;
+  document.querySelectorAll('.theme-opt').forEach(b => b.classList.toggle('on', b.dataset.t === theme));
+  renderAccentGrid();
+  showView('v-settings');
+}
+
+// ══════════════════════════════════════════════════
+// HOME
+// ══════════════════════════════════════════════════
+function setMode(mode, btn) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  renderHome();
+}
+
+function renderHome() {
+  const list = document.getElementById('branch-list');
+  list.innerHTML = '';
+  const filtered = S.branches.filter(b => b.mode === currentMode);
+  const showSample = filtered.length === 0;
+
+  if (showSample && SAMPLE.mode === currentMode) {
+    list.appendChild(buildBranchCard(SAMPLE));
+  }
+
+  if (!filtered.length && !showSample) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = `<p>No ${currentMode} branches yet.</p><p>Tap + to create your first branch point.</p>`;
+    list.appendChild(empty);
+    return;
+  }
+
+  if (!filtered.length) return;
+
+  [...filtered].reverse().forEach(b => list.appendChild(buildBranchCard(b)));
+}
+
+function buildBranchCard(branch) {
+  const card = document.createElement('div');
+  card.className = 'branch-card' + (branch.isSample ? ' sample' : '') + (branch.mode === 'fiction' ? ' fiction' : '');
+  const entA = branch.thisPath.length, entB = branch.theOther.length;
+  const date = new Date(branch.createdAt).toLocaleDateString([], { month:'short', day:'numeric', year:'numeric' });
+  card.innerHTML = `
+    <div class="branch-card-mode">
+      <span class="dot"></span>
+      ${branch.isSample ? 'Example · ' : ''}${branch.mode === 'real' ? 'Real' : 'Fiction'}
+    </div>
+    <div class="branch-card-title">${branch.title}</div>
+    <div class="branch-card-moment">${branch.moment}</div>
+    <div class="branch-card-meta">
+      <span>✦ ${entA} entr${entA !== 1 ? 'ies' : 'y'}</span>
+      <span>◇ ${entB} entr${entB !== 1 ? 'ies' : 'y'}</span>
+      <span>${date}</span>
+    </div>`;
+  card.onclick = () => openBranch(branch.id);
+  return card;
+}
+
+// ══════════════════════════════════════════════════
+// CREATE
+// ══════════════════════════════════════════════════
+let createMode = 'real';
+
+function selectCreateMode(m) {
+  createMode = m;
+  document.querySelectorAll('.mode-opt').forEach(el => el.classList.toggle('on', el.dataset.m === m));
+  document.getElementById('mode-hint').textContent = m === 'real'
+    ? 'A decision from your own life — a moment of genuine choice.'
+    : 'A character, a story, an invented world — what choice might have changed everything?';
+}
+
+function createBranch() {
+  const title  = document.getElementById('create-title').value.trim();
+  const moment = document.getElementById('create-moment').value.trim();
+  if (!title)  { toast('Give this branch a title'); return; }
+  if (!moment) { toast('Describe the decision moment'); return; }
+  const branch = { id: Date.now().toString(), mode: createMode, title, moment, thisPath: [], theOther: [], createdAt: Date.now() };
+  S.branches.push(branch);
+  save();
+  openBranch(branch.id, true);
+}
+
+// ══════════════════════════════════════════════════
+// BRANCH VIEW
+// ══════════════════════════════════════════════════
+function getBranch(id) {
+  if (id === 'sample') return SAMPLE;
+  return S.branches.find(b => b.id === id);
+}
+
+function openBranch(id, fromCreate = false) {
+  currentBranchId = id;
+  const branch = getBranch(id);
+  if (!branch) return;
+  document.getElementById('branch-view-title').textContent = branch.title;
+  document.getElementById('panel-a-moment').textContent = branch.moment;
+  document.getElementById('panel-b-moment').textContent = branch.moment;
+  renderEntries(branch);
+
+  // Reset scroll to panel A
+  const swipe = document.getElementById('path-swipe');
+  swipe.scrollLeft = 0;
+  updatePathIndicator(false);
+
+  showView('v-branch', !fromCreate);
+}
+
+function renderEntries(branch) {
+  renderPathEntries('a', branch.thisPath);
+  renderPathEntries('b', branch.theOther);
+
+  // Hide delete/share for sample
+  const isSample = branch.isSample;
+  document.querySelector('#v-branch .topbar button[title="Delete"]').style.display = isSample ? 'none' : '';
+  document.querySelector('#v-branch .topbar button[title="Share card"]').style.display = '';
+
+  // Show/hide swipe hint
+  document.getElementById('swipe-hint-a').style.display = branch.thisPath.length === 0 && branch.theOther.length === 0 ? 'block' : 'none';
+
+  // Disable add for sample
+  document.querySelectorAll('.path-add-btn').forEach(b => {
+    b.style.display = isSample ? 'none' : '';
+  });
+}
+
+function renderPathEntries(path, entries) {
+  const el = document.getElementById('entries-' + path);
+  el.innerHTML = '';
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'path-empty';
+    empty.textContent = path === 'a'
+      ? 'What actually happened? Write the first entry on this path.'
+      : 'What might have happened? Write into the road not taken.';
+    el.appendChild(empty);
+    return;
+  }
+  entries.forEach((entry, i) => {
+    if (i > 0) {
+      const div = document.createElement('div');
+      div.className = 'entry-divider'; el.appendChild(div);
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'entry';
+    const d = new Date(entry.createdAt).toLocaleDateString([], { month:'long', day:'numeric', year:'numeric' });
+    wrap.innerHTML = `<div class="entry-date">${d}</div><div class="entry-text ${path}">${entry.text.replace(/\n/g,'<br>')}</div>`;
+    el.appendChild(wrap);
+  });
+}
+
+// Path indicator synced to swipe position
+function initSwipeIndicator() {
+  const swipe = document.getElementById('path-swipe');
+  swipe.addEventListener('scroll', () => {
+    const onOther = swipe.scrollLeft > swipe.offsetWidth * 0.5;
+    updatePathIndicator(onOther);
+  }, { passive: true });
+}
+
+function updatePathIndicator(onOther) {
+  document.getElementById('pi-label-a').style.color = onOther ? 'var(--dim)' : 'var(--a)';
+  document.getElementById('pi-label-b').style.color = onOther ? 'var(--b)' : 'var(--dim)';
+  document.getElementById('pi-a').className = 'path-pip ' + (onOther ? 'dim' : 'a');
+  document.getElementById('pi-b').className = 'path-pip ' + (onOther ? 'b' : 'dim');
+}
+
+function deleteBranch() {
+  const branch = getBranch(currentBranchId);
+  if (!branch || branch.isSample) return;
+  if (!confirm(`Delete "${branch.title}"? This cannot be undone.`)) return;
+  S.branches = S.branches.filter(b => b.id !== currentBranchId);
+  save();
+  goBack('v-branch');
+  renderHome();
+  toast('Branch deleted');
+}
+
+// ══════════════════════════════════════════════════
+// WRITE OVERLAY
+// ══════════════════════════════════════════════════
+function openWrite(path) {
+  const branch = getBranch(currentBranchId);
+  if (!branch || branch.isSample) return;
+  writeTarget = path;
+  const hints = {
+    a: 'What did this path feel like? What did you notice, do, think?',
+    b: 'Imagine it clearly — what did the other life look like from inside it?'
+  };
+  const labels = { a: 'This Path', b: 'The Other' };
+  document.getElementById('write-path-label').textContent = labels[path];
+  document.getElementById('write-path-label').className = path;
+  document.getElementById('write-hint').textContent = hints[path];
+  document.getElementById('write-textarea').value = '';
+  document.getElementById('write-overlay').classList.add('on');
+  setTimeout(() => document.getElementById('write-textarea').focus(), 300);
+}
+
+function closeWrite() {
+  document.getElementById('write-overlay').classList.remove('on');
+  document.getElementById('write-textarea').value = '';
+  writeTarget = null;
+}
+
+function saveEntry() {
+  const text = document.getElementById('write-textarea').value.trim();
+  if (!text) { toast('Write something first'); return; }
+  const branch = getBranch(currentBranchId);
+  if (!branch) return;
+  const entry = { id: Date.now().toString(), text, createdAt: Date.now() };
+  if (writeTarget === 'a') branch.thisPath.push(entry);
+  else branch.theOther.push(entry);
+  save();
+  renderEntries(branch);
+  closeWrite();
+  toast('Entry saved');
+}
+
+// ══════════════════════════════════════════════════
+// SHARE CARD
+// ══════════════════════════════════════════════════
+function wrapText(ctx, text, x, y, maxW, lineH) {
+  const words = text.split(' ');
+  let line = '';
+  for (const word of words) {
+    const test = line + (line ? ' ' : '') + word;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, y); y += lineH; line = word;
+    } else { line = test; }
+  }
+  if (line) ctx.fillText(line, x, y);
+  return y + lineH;
+}
+
+async function openShare() {
+  const branch = getBranch(currentBranchId);
+  if (!branch) return;
+  await document.fonts.ready;
+
+  const W = 1080, H = 1080;
+  const canvas = document.getElementById('share-canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const ac = ACCENTS[S.settings.accent] || ACCENTS.plum;
+  const [gc1, gc2] = ACCENT_CARD_GRADS[S.settings.accent] || ACCENT_CARD_GRADS.plum;
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(W, 0, 0, H);
+  grad.addColorStop(0, gc1);
+  grad.addColorStop(1, gc2);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Soft vignette
+  const vig = ctx.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.9);
+  vig.addColorStop(0, 'transparent');
+  vig.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  const pad = 80;
+
+  // Wordmark
+  ctx.font = '300 26px Fraunces, Georgia, serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.textAlign = 'left';
+  ctx.fillText('PARALLEL', pad, pad + 10);
+
+  // Title
+  ctx.font = '400 62px Fraunces, Georgia, serif';
+  ctx.fillStyle = '#f5eeff';
+  let y = wrapText(ctx, branch.title, pad, 200, W - pad*2, 78);
+  y += 20;
+
+  // Divider
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+  y += 40;
+
+  // This Path label
+  ctx.font = '300 22px system-ui, sans-serif';
+  ctx.fillStyle = ac.a;
+  ctx.fillText('✦  This Path', pad, y);
+  y += 36;
+
+  // This Path text
+  ctx.font = 'italic 300 32px Fraunces, Georgia, serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  const textA = branch.thisPath[0]?.text || '—';
+  const snippetA = textA.length > 140 ? textA.slice(0, 140).trim() + '…' : textA;
+  y = wrapText(ctx, `"${snippetA}"`, pad, y, W - pad*2, 44);
+  y += 28;
+
+  // Diamond divider
+  ctx.font = '300 28px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.textAlign = 'center';
+  ctx.fillText('◆', W/2, y);
+  ctx.textAlign = 'left';
+  y += 44;
+
+  // The Other label
+  ctx.font = '300 22px system-ui, sans-serif';
+  ctx.fillStyle = ac.b;
+  ctx.fillText('◇  The Other', pad, y);
+  y += 36;
+
+  // The Other text
+  ctx.font = 'italic 300 32px Fraunces, Georgia, serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  const textB = branch.theOther[0]?.text || '—';
+  const snippetB = textB.length > 140 ? textB.slice(0, 140).trim() + '…' : textB;
+  wrapText(ctx, `"${snippetB}"`, pad, y, W - pad*2, 44);
+
+  // Footer
+  ctx.font = '300 22px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.textAlign = 'right';
+  ctx.fillText('parallel', W - pad, H - 56);
+
+  document.getElementById('share-overlay').classList.add('on');
+}
+
+function downloadCard() {
+  const canvas = document.getElementById('share-canvas');
+  const link = document.createElement('a');
+  link.download = 'parallel-card.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  toast('Saved to downloads');
+}
+
+function closeShare() {
+  document.getElementById('share-overlay').classList.remove('on');
+}
+
+// ══════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════
+function confirmClear() {
+  if (!confirm('Delete all branches and entries? This cannot be undone.')) return;
+  S = { branches: [], settings: S.settings };
+  save(); renderHome();
+  toast('All data cleared');
+}
+
+// ══════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 2400);
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+load();
+applyTheme();
+renderHome();
+initSwipeIndicator();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
